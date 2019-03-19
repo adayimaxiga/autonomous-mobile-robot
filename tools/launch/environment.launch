@@ -1,0 +1,60 @@
+<launch>
+
+
+  <arg name="paused" default="false"/>
+  <arg name="use_sim_time" default="true"/>
+  <arg name="gui" default="false"/>
+  <arg name="headless" default="false"/>
+  <arg name="debug" default="false"/>
+
+  <arg name="name" default="infantry"/>
+  <arg name="pos_x" default="-3.5"/>
+  <arg name="pos_y" default="-2"/>
+  <arg name="pos_z" default="0.0"/>
+  <arg name="pos_R" default="0"/>
+  <arg name="namespace_arg" default=""/>
+  
+  <!-- launch the ICRA RM AI challenge 3D map in gazebo -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch"> 
+    <arg name="world_name" value="$(find gazebo_envir)/worlds/subject.world"/>
+    <arg name="debug" value="$(arg debug)" />
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="paused" value="$(arg paused)"/>
+    <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+    <arg name="headless" value="$(arg headless)"/>
+  </include>
+
+  <node
+    name="tf_footprint_base"
+    pkg="tf"
+    type="static_transform_publisher"
+    args="0 0 0 0 0 0 $(arg namespace_arg)/base_footprint $(arg namespace_arg)/base_link 40" />
+
+  <rosparam file="$(find gazebo_envir)/config/infantry_control_copy.yaml" command="load" />
+  
+  <!-- load the controllers -->
+  <node name="controller_spawner" pkg="controller_manager" type="spawner" respawn="false"
+	output="screen" 
+	args="joint_state_controller"/>
+
+  <arg name="robot_model" default="$(find gazebo_envir)/robots/infantry_red.xacro" />
+  <param name="infantry_description" 
+         command="$(find xacro)/xacro --inorder $(arg robot_model)" />
+
+  <node name="spawn_robot" pkg="gazebo_ros" type="spawn_model"
+    args="-param infantry_description
+    -urdf
+    -x $(arg pos_x)
+    -y $(arg pos_y)
+    -z $(arg pos_z)
+    -R 0
+    -P 0
+    -Y $(arg pos_R)
+    -model $(arg name)"
+    respawn="false" 
+    output="screen">
+  </node>
+
+  <node pkg="tf" type="static_transform_publisher" name="laser_baselink" args="0.0 0.0 0.2 0 0 0 1 base_link laser_Link 100" />
+
+</launch>
