@@ -52,8 +52,8 @@ class RangeDataInserterTest2D : public ::testing::Test {
     range_data.returns.emplace_back(-2.5f, 1.5f, 0.f);
     range_data.returns.emplace_back(-1.5f, 2.5f, 0.f);
     range_data.returns.emplace_back(-0.5f, 3.5f, 0.f);
-    range_data.origin.x() = -1.5f;
-    range_data.origin.y() = 1.5f;
+    range_data.origin.x() = -0.5f;
+    range_data.origin.y() = 0.5f;
     range_data_inserter_->Insert(range_data, &probability_grid_);
     probability_grid_.FinishUpdate();
   }
@@ -75,11 +75,13 @@ TEST_F(RangeDataInserterTest2D, InsertPointCloud) {
 
   enum class State { UNKNOWN, MISS, HIT };
   State expected_states[5][5] = {
-      {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::UNKNOWN},
-      {State::UNKNOWN, State::HIT   ,  State::MISS,    State::MISS,    State::MISS},
-      {State::UNKNOWN, State::UNKNOWN, State::HIT,     State::MISS,    State::MISS},
-      {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::HIT,     State::MISS},
-      {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::HIT}};
+      {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::UNKNOWN,
+       State::UNKNOWN},
+      {State::UNKNOWN, State::HIT, State::MISS, State::MISS, State::MISS},
+      {State::UNKNOWN, State::UNKNOWN, State::HIT, State::MISS, State::MISS},
+      {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::HIT, State::MISS},
+      {State::UNKNOWN, State::UNKNOWN, State::UNKNOWN, State::UNKNOWN,
+       State::HIT}};
   for (int row = 0; row != 5; ++row) {
     for (int column = 0; column != 5; ++column) {
       Eigen::Array2i cell_index(row, column);

@@ -1,6 +1,5 @@
 <launch>
 
-
   <arg name="paused" default="false"/>
   <arg name="use_sim_time" default="true"/>
   <arg name="gui" default="false"/>
@@ -9,7 +8,7 @@
 
   <arg name="name" default="infantry"/>
   <arg name="pos_x" default="-3.5"/>
-  <arg name="pos_y" default="-2"/>
+  <arg name="pos_y" default="2"/>
   <arg name="pos_z" default="0.0"/>
   <arg name="pos_R" default="0"/>
   <arg name="namespace_arg" default=""/>

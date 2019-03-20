@@ -64,12 +64,7 @@ namespace {
     public:
         LoopClosuerCheck()
         {
-            map_sub_= nh_.subscribe("map", 1, &LoopClosuerCheck::mapReceived,this);
-            amcl_pose_sub_ = nh_.subscribe("amcl_pose", 1, &LoopClosuerCheck::amclPoseReceived,this);
-            laser1_sub_ = nh_.subscribe(scan_topic_1, 1, &LoopClosuerCheck::LaserScanReceived_1,this);
-            //laser2_sub_ = nh_.subscribe(scan_topic_2, 1, &LoopClosuerCheck::LaserScanReceived_2,this);
-            cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("cloud", 5);
-            pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("b_b_pose", 1, true);
+            
             tfb_.reset(new tf2_ros::TransformBroadcaster());
             tf_.reset(new tf2_ros::Buffer());
             tfl_.reset(new tf2_ros::TransformListener(*tf_));
@@ -99,6 +94,14 @@ namespace {
             const proto::CeresScanMatcherOptions2D options =
                     CreateCeresScanMatcherOptions2D(parameter_dictionary.get());
             ceres_scan_matcher_ = common::make_unique<CeresScanMatcher2D>(options);
+            
+            
+            laser1_sub_ = nh_.subscribe(scan_topic_1, 1, &LoopClosuerCheck::LaserScanReceived_1,this);
+            //laser2_sub_ = nh_.subscribe(scan_topic_2, 1, &LoopClosuerCheck::LaserScanReceived_2,this);
+            cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("cloud", 5);
+            pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("b_b_pose", 1, true);
+            map_sub_= nh_.subscribe("map", 1, &LoopClosuerCheck::mapReceived,this);
+            amcl_pose_sub_ = nh_.subscribe("amcl_pose", 1, &LoopClosuerCheck::amclPoseReceived,this);
         }
         ~LoopClosuerCheck()
         {
@@ -148,7 +151,7 @@ namespace {
 
         transform::Rigid3d amcl_data;
         std::unique_ptr<CeresScanMatcher2D> ceres_scan_matcher_;
-        cartographer::sensor::TimedPointCloudData laser_scan_point_data[2];
+        cartographer::sensor::TimedPointCloudData laser_scan_point_data;
 
         geometry_msgs::Pose FastCorrelativeScanMatcher(const cartographer::transform::Rigid2d& initial_pose_estimate,const cartographer::sensor::PointCloud&  point_cloud_match,float &score_return);
         int map_receive = 0;
@@ -171,7 +174,7 @@ namespace {
     geometry_msgs::Pose
     LoopClosuerCheck::FastCorrelativeScanMatcher(const cartographer::transform::Rigid2d& initial_pose_estimate,const cartographer::sensor::PointCloud&  point_cloud_match,float &score_return)
     {
-        const auto options = CreateFastCorrelativeScanMatcherTestOptions2D(8);
+        const auto options = CreateFastCorrelativeScanMatcherTestOptions2D(5);
         FastCorrelativeScanMatcher2D fast_correlative_scan_matcher(*probability_grid_,
                                                                    options);
         transform::Rigid2d pose_estimate;
@@ -266,11 +269,12 @@ namespace {
                         CellLimits(msg.info.height, msg.info.width)));
         origin_pose_x = msg.info.origin.position.x;
         origin_pose_y = msg.info.origin.position.y;
+
         std::cout<<"cell index :"<<probability_grid_->limits().GetCellIndex(Eigen::Vector2f(0.f, 0.f));
         //地图坐标自底部向上，自左向右。
         for(int j=0;j<msg.info.height;j++) {
             for (int i = 0; i < msg.info.width; i++) {
-                //std::cout << "x : " << i << "y :" << j << std::endl;
+                
                 //std::cout<<probability_grid_->limits().GetCellIndex(
                 //        Eigen::Vector2f((i+1)*msg.info.resolution + origin_pose_x ,(j+1)*msg.info.resolution + origin_pose_y))<<std::endl;
 
@@ -286,25 +290,32 @@ namespace {
                     {
                         probably_ = msg.data[i + j * msg.info.width]/ 100.f;
                     }
-                    //std::cout<<std::endl<<"Probably grid is :"<<probably_;
+                    
+                    
+
                     probability_grid_->ApplyLookupTable(
                             probability_grid_->limits().GetCellIndex(
-                                    Eigen::Vector2f((i + 1) * msg.info.resolution + origin_pose_x,
-                                                    (j + 1) * msg.info.resolution + origin_pose_y)),
+                                    Eigen::Vector2f((i + 0.5) * msg.info.resolution + origin_pose_x,
+                                                    (j + 0.5) * msg.info.resolution + origin_pose_y)),
                             ComputeLookupTableToApplyCorrespondenceCostOdds(Odds(probably_)));
+                            
                     probability_grid_ ->FinishUpdate();
+                    //std::cout << std::endl<<"Probably grid is :"<<probably_<< std::endl;
                 }
+                //std::cout << "x : " << i << "y :" << j ;
+            
             }
+            
         }
 
-
+        //std::cout<<"Here, Map OK";
         //for(int j=0;j<msg.info.height;j++) {
         //    for (int i = 0; i < msg.info.width; i++) {
         //        probability_grid_->SetProbability(Eigen::Array2i(i,j),
         //               (float)msg.data[i+j*msg.info.width]/100.f);
         //    }
         //}
-        //printMap();
+        printMap();
 
     }
     //调试用，打印地图和机器人位置。
@@ -422,7 +433,7 @@ std::tuple<::cartographer::sensor::PointCloudWithIntensities, ::cartographer::co
                         points.points, sensor_to_tracking.cast<float>())};
 
         //到这里数据由激光自己的坐标系转换到了bask_link下。接下来做scanMatch 给到最核心的节点。
-        laser_scan_point_data[sensor_id] = point_cloud_processed;
+        laser_scan_point_data = point_cloud_processed;
     }
 
 //***********************callback***********************
@@ -437,28 +448,27 @@ std::tuple<::cartographer::sensor::PointCloudWithIntensities, ::cartographer::co
     void
     LoopClosuerCheck::amclPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg)
     {
+        std::cout<<"receive a amclpose "<<std::endl;
         if(!map_receive)
             return;
         if(!laser_receive_1)
             return;
         std::unique_ptr<cartographer::sensor::OdometryData> odometry_data = ToOdometryData(msg);
-
+        std::cout<<"Now Start calculator";
         amcl_data = odometry_data->pose;
 
         transform::Rigid3f range_data_pose = amcl_data.cast<float>();
 
-
-
         cartographer::sensor::RangeData accumulated_range_data_;
-        for(int j=0;j<2;j++) {
-            for (size_t i = 0; i < laser_scan_point_data[j].ranges.size(); ++i) {
+        
+            for (size_t i = 0; i < laser_scan_point_data.ranges.size(); ++i) {
 
 
-                const Eigen::Vector4f &hit = laser_scan_point_data[j].ranges[i];
+                const Eigen::Vector4f &hit = laser_scan_point_data.ranges[i];
                 //std::cout<<"laser "<<j<<" data "<<i<<"is"<<hit;
                 const Eigen::Vector3f origin_in_local =
                         range_data_pose *
-                                laser_scan_point_data[j].origin;
+                                laser_scan_point_data.origin;
                 const Eigen::Vector3f hit_in_local = range_data_pose * hit.head<3>();
                 const Eigen::Vector3f delta = hit_in_local - origin_in_local;
                 const float range = delta.norm();
@@ -472,7 +482,7 @@ std::tuple<::cartographer::sensor::PointCloudWithIntensities, ::cartographer::co
                     }
                 }
             }
-        }
+        
         const cartographer::sensor::RangeData to_baselink_range_data= sensor::CropRangeData(sensor::TransformRangeData(
                 accumulated_range_data_, range_data_pose.inverse()), -0.8f, 2.f);
         //probability_grid_.limits().GetCellIndex(Eigen::Vector2f(-3.5f, 2.5f)
@@ -506,7 +516,7 @@ std::tuple<::cartographer::sensor::PointCloudWithIntensities, ::cartographer::co
                             <<std::endl<<"match_pose"<<cartographer::transform::ToProto(*pose_observation).DebugString();
         std::cout<<summary.BriefReport();
         std::cout<<std::endl;
-        if(summary.final_cost>0.35f)
+        if(summary.final_cost>0.2f)
         {
             float score=0.f;
             std::cout<<"定位失效，开始全局检测";
@@ -528,7 +538,8 @@ std::tuple<::cartographer::sensor::PointCloudWithIntensities, ::cartographer::co
     void
     LoopClosuerCheck::LaserScanReceived_1(const sensor_msgs::LaserScanConstPtr& msg)
     {
-        //laser_receive_1 =1;
+        laser_receive_1 =1;
+        std::cout<<"receive a laser scan "<<std::endl;
         ::cartographer::sensor::PointCloudWithIntensities point_cloud;
         ::cartographer::common::Time time;
         std::tie(point_cloud, time) = LaserScanToPointCloudWithIntensities(*msg);

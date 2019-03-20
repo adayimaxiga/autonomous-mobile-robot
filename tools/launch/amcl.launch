@@ -1,13 +1,12 @@
 <launch>
-<node pkg="map_server" type="map_server" name="map_server" args="$(find gazebo_envir)/worlds/icra2019.yaml"/>
 
- 
+<node pkg="map_server" type="map_server" name="map_server" args="$(find gazebo_envir)/worlds/icra2019.yaml"/>
 
 <node pkg="amcl" type="amcl" name="amcl">
   <!-- Publish scans from best pose at a max of 10 Hz -->
   <param name="odom_model_type" value="omni"/>
   <param name="odom_alpha5" value="0.003"/>
-  <param name="transform_tolerance" value="0.2" />
+  <param name="transform_tolerance" value="0.15" />
   <param name="gui_publish_rate" value="10.0"/>
   <param name="laser_max_beams" value="30"/>
   <param name="min_particles" value="80"/>

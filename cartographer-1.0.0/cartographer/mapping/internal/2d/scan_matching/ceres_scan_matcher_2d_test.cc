@@ -38,19 +38,19 @@ class CeresScanMatcherTest : public ::testing::Test {
       : probability_grid_(
             MapLimits(1., Eigen::Vector2d(10., 10.), CellLimits(20, 20))) {
     probability_grid_.SetProbability(
-                    probability_grid_.limits().GetCellIndex(Eigen::Vector2f(-3.5f, 2.5f)),
+        probability_grid_.limits().GetCellIndex(Eigen::Vector2f(-3.5f, 2.5f)),
         kMaxProbability);
 
     point_cloud_.emplace_back(-3.f, 2.f, 0.f);
 
-    auto parameter_dictionary = cartographer::common::MakeDictionary(R"text(
+    auto parameter_dictionary = common::MakeDictionary(R"text(
         return {
           occupied_space_weight = 1.,
           translation_weight = 0.1,
           rotation_weight = 1.5,
           ceres_solver_options = {
             use_nonmonotonic_steps = true,
-            max_num_iterations = 500,
+            max_num_iterations = 50,
             num_threads = 1,
           },
         })text");

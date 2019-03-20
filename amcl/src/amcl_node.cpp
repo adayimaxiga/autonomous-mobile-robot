@@ -502,6 +502,7 @@ AmclNode::AmclNode() :
 
 void AmclNode::scanMatchResultReceived(const geometry_msgs::PoseStampedConstPtr& msg)
 {
+  std::cout<< "Receive a branch and bound pose ";
   geometry_msgs::PoseWithCovarianceStamped pose_with_covar;
   pose_with_covar.header = msg ->header;
   pose_with_covar.pose.pose = msg ->pose;
